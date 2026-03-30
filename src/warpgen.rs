@@ -312,21 +312,21 @@ impl WarpGen {
     pub fn generate_wireguard_string(info: &WarpConnectionInfo) -> String {
         let mut config = String::new();
         
-        config.push_str("# ==========================================\n");
-        config.push_str(&format!("# Warp Config - Source: {}\n", info.source));
-        config.push_str(&format!("# Created: {}\n", chrono::Local::now().format("%Y-%m-%d %H:%M:%S")));
-        config.push_str(&format!("# Warp Plus: {}\n", if info.warp_plus { "Yes" } else { "No" }));
-        if !info.expires.is_empty() {
-            config.push_str(&format!("# Expires: {}\n", info.expires));
-        }
-        config.push_str("# ==========================================\n\n");
-        
         config.push_str("[Interface]\n");
         config.push_str(&format!("PrivateKey = {}\n", info.private_key));
         config.push_str(&format!("Address = {}\n", info.address_v4));
         config.push_str(&format!("Address = {}\n", info.address_v6));
         config.push_str(&format!("DNS = {}\n", info.dns));
         config.push_str("MTU = 1280\n\n");
+        
+        config.push_str("Jmax = 70\n");
+        config.push_str("Jmin = 40\n");
+        config.push_str("S1 = 15\n");
+        config.push_str("S2 = 91\n");
+        config.push_str("H1 = 1\n");
+        config.push_str("H2 = 2\n");
+        config.push_str("H3 = 3\n");
+        config.push_str("H4 = 4\n\n");
         
         config.push_str("[Peer]\n");
         config.push_str(&format!("PublicKey = {}\n", info.public_key));
