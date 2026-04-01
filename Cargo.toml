@@ -6,7 +6,7 @@ description = "Rust collection api for generate warp config"
 readme = "readme.md"
 homepage = "https://github.com/l0v3m0n3y/warpgen"
 repository = "https://github.com/l0v3m0n3y/warpgen"
-keywords = ["save_config_auto","save_valokda_config","save_workers_config"]
+keywords = ["save_config_auto","save_valokda_config","save_workers_config","save_netlify_config"]
 categories = ["network-programming"]
 
 [dependencies]
