@@ -348,7 +348,7 @@ impl WarpGen {
     }
     
     pub async fn get_warp_valokda(&self) -> Result<Value, Box<dyn std::error::Error>> {
-        let url = format!("{}/warp", self.api_valokda);
+        let url = format!("{}/warp?mode=awg2&template=warp_amnezia_awg2&dns=cloudflare", self.api_valokda);
         let client = reqwest::Client::new();
         let current_headers = self.get_headers_for(&self.api_valokda);
         let response = client
