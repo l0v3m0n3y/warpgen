@@ -63,6 +63,7 @@ pub struct ConfigMetadata {
 pub struct WarpGen {
     api: String,
     api_valokda: String,
+    api_netlify: String,
     api_dev: String,
     headers: Arc<Mutex<HeaderMap>>,
 }
@@ -78,6 +79,7 @@ impl WarpGen {
         Self {
             api_dev: "https://warp-generation.vercel.app".to_string(),
             api_valokda: "https://valokda-amnezia.vercel.app/api".to_string(),
+            api_netlify: "https://generator-warp-config.netlify.app/.netlify/functions".to_string(),
             api: "https://warp-generator.vercel.app/api".to_string(),
             headers: Arc::new(Mutex::new(headers)),
         }
@@ -346,7 +348,41 @@ impl WarpGen {
         
         self.save_config_to_file(&config_str, &filename).await
     }
+    ////
     
+    pub async fn get_warp_netlify(&self) -> Result<Value, Box<dyn std::error::Error>> {
+        let url = format!("{}/warp?mode=awg2&template=warp_amnezia_awg2&dns=cloudflare", self.api_netlify);
+        let client = reqwest::Client::new();
+        let current_headers = self.get_headers_for(&self.api_netlify);
+        let response = client
+            .get(&url)
+            .headers(current_headers)
+            .send()
+            .await?;
+        let body = response.json().await?;
+
+        Ok(body)
+    }
+
+    pub async fn decode_config_netlify(&self) -> Result<String, Box<dyn std::error::Error>> {
+        let welcome_data = self.get_warp_netlify().await?;
+        
+        let config_base64 = welcome_data["content"].as_str().ok_or("configBase64 not found in response")?;
+        
+        let decoded_bytes = BASE64.decode(config_base64)?;
+        let decoded_string = String::from_utf8(decoded_bytes)?;
+        
+        Ok(decoded_string)
+    }
+
+    pub async fn save_netlify_config(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let config = self.decode_config_netlify().await?;
+        
+        let timestamp = Local::now().format("%Y%m%d_%H%M%S");
+        let filename = format!("wireguard_valokda_{}.conf", timestamp);
+        
+        self.save_config_to_file(&config, &filename).await
+    }
     pub async fn get_warp_valokda(&self) -> Result<Value, Box<dyn std::error::Error>> {
         let url = format!("{}/warp?mode=awg2&template=warp_amnezia_awg2&dns=cloudflare", self.api_valokda);
         let client = reqwest::Client::new();
