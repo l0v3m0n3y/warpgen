@@ -1,4 +1,4 @@
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, HOST, CONNECTION, ACCEPT_LANGUAGE, USER_AGENT, ORIGIN, REFERER,ACCEPT_ENCODING,CONTENT_TYPE};
+use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, HOST, CONNECTION, ACCEPT_LANGUAGE, USER_AGENT, ORIGIN, REFERER,CONTENT_TYPE};
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 use std::fs;
@@ -8,7 +8,6 @@ use regex::Regex;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use std::collections::HashMap;
 use rand::{distributions::Alphanumeric, Rng};
 use tokio::time::sleep;
 
@@ -29,41 +28,12 @@ pub struct WarpConnectionInfo {
     pub source: String, 
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WireGuardConfig {
-    pub interface: InterfaceConfig,
-    pub peer: PeerConfig,
-    pub metadata: ConfigMetadata,
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InterfaceConfig {
-    pub private_key: String,
-    pub addresses: Vec<String>,
-    pub dns: Vec<String>,
-    pub mtu: u16,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PeerConfig {
-    pub public_key: String,
-    pub endpoint: String,
-    pub allowed_ips: Vec<String>,
-    pub persistent_keepalive: u16,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigMetadata {
-    pub source: String,
-    pub created_at: String,
-    pub warp_plus: bool,
-    pub expires_at: Option<String>,
-}
 
 pub struct WarpGen {
     api: String,
     api_valokda: String,
-    api_netlify: String,
+    warp_portal: String,
     api_dev: String,
     headers: Arc<Mutex<HeaderMap>>,
 }
@@ -79,7 +49,7 @@ impl WarpGen {
         Self {
             api_dev: "https://warp-generation.vercel.app".to_string(),
             api_valokda: "https://valokda-amnezia.vercel.app/api".to_string(),
-            api_netlify: "https://generator-warp-config.netlify.app/.netlify/functions".to_string(),
+            warp_portal: "https://warp-vless.vercel.app/api".to_string(),
             api: "https://warp-generator.vercel.app/api".to_string(),
             headers: Arc::new(Mutex::new(headers)),
         }
@@ -99,7 +69,7 @@ impl WarpGen {
     
     pub async fn get_key(&self) -> Result<String, Box<dyn std::error::Error>> {
         let url = format!("{}/keys", self.api_dev);
-        let mut current_headers = self.get_headers_for(&self.api_dev);
+        let  current_headers = self.get_headers_for(&self.api_dev);
         let client = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
             .build()?;
@@ -239,13 +209,6 @@ impl WarpGen {
         let locale_prefix = locale.split('_').next().unwrap_or("ee");
         let custom_endpoint = format!("{}.tribukvy.ltd:955", locale_prefix);
         
-        let endpoint_host = response["config"]["peers"][0]["endpoint"]["host"]
-            .as_str()
-            .ok_or("Missing endpoint host")?;
-        
-        let (endpoint, port_str) = endpoint_host.split_once(':')
-            .ok_or("Invalid endpoint format")?;
-        let port = port_str.parse::<u16>()?;
         
         Ok(WarpConnectionInfo {
             private_key: response["key"]
@@ -349,24 +312,35 @@ impl WarpGen {
         self.save_config_to_file(&config_str, &filename).await
     }
     
-    pub async fn get_warp_netlify(&self) -> Result<Value, Box<dyn std::error::Error>> {
-        let url = format!("{}/warp?mode=awg2&template=warp_amnezia_awg2&dns=cloudflare", self.api_netlify);
+    pub async fn get_warp_portal(&self) -> Result<Value, Box<dyn std::error::Error>> {
+        let url = format!("{}/warp", self.warp_portal);
         let client = reqwest::Client::new();
-        let current_headers = self.get_headers_for(&self.api_netlify);
+        let body = json!({
+  "selectedServices": [],
+  "siteMode": "all",
+  "deviceType": "phone",
+  "selectedDns": "1.1.1.1",
+  "amneziaMode": "default"
+});
+        let current_headers = self.get_headers_for(&self.warp_portal);
         let response = client
-            .get(&url)
-            .headers(current_headers)
-            .send()
-            .await?;
+                .post(&url)
+                .headers(current_headers.clone())
+                .json(&body)
+                .send()
+                .await?;
         let body = response.json().await?;
 
         Ok(body)
     }
 
-    pub async fn decode_config_netlify(&self) -> Result<String, Box<dyn std::error::Error>> {
-        let welcome_data = self.get_warp_netlify().await?;
+    pub async fn decode_config_portal(&self) -> Result<String, Box<dyn std::error::Error>> {
+        let welcome_data = self.get_warp_portal().await?;
         
-        let config_base64 = welcome_data["content"].as_str().ok_or("configBase64 not found in response")?;
+        let config_base64 = welcome_data.get("content")
+            .and_then(|content| content.get("configBase64"))
+            .and_then(|config| config.as_str())
+            .ok_or("configBase64 not found in response")?;
         
         let decoded_bytes = BASE64.decode(config_base64)?;
         let decoded_string = String::from_utf8(decoded_bytes)?;
@@ -374,11 +348,11 @@ impl WarpGen {
         Ok(decoded_string)
     }
 
-    pub async fn save_netlify_config(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        let config = self.decode_config_netlify().await?;
+    pub async fn save_portal_config(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let config = self.decode_config_portal().await?;
         
         let timestamp = Local::now().format("%Y%m%d_%H%M%S");
-        let filename = format!("wireguard_valokda_{}.conf", timestamp);
+        let filename = format!("wireguard_portal_{}.conf", timestamp);
         
         self.save_config_to_file(&config, &filename).await
     }
