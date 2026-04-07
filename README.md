@@ -9,7 +9,7 @@ use warpgen::WarpGen;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let warp_client = WarpGen::new();
 
-    match warp_client.save_netlify_config().await {
+    match warp_client.save_portal_config().await {
         Ok(path) => {
             println!("✅ Success! Config saved to: {}", path.display());
         }
@@ -51,6 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
 ```
 
 # Launch (your script)
