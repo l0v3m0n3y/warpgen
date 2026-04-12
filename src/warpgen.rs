@@ -2,12 +2,14 @@ use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, HOST, CONNECTION, ACCEPT_L
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 use std::fs;
+use reqwest::{Client, redirect::Policy}; 
 use std::path::{Path, PathBuf};
 use chrono::{Local, Utc};
 use regex::Regex;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use scraper::{Html, Selector};
 use rand::{distributions::Alphanumeric, Rng};
 use tokio::time::sleep;
 
@@ -34,6 +36,7 @@ pub struct WarpGen {
     api: String,
     api_valokda: String,
     warp_portal: String,
+    warpgen_api: String,
     api_dev: String,
     headers: Arc<Mutex<HeaderMap>>,
 }
@@ -50,6 +53,7 @@ impl WarpGen {
             api_dev: "https://warp-generation.vercel.app".to_string(),
             api_valokda: "https://valokda-amnezia.vercel.app/api".to_string(),
             warp_portal: "https://warp-vless.vercel.app/api".to_string(),
+            warpgen_api: "https://warpgen.net".to_string(),
             api: "https://warp-generator.vercel.app/api".to_string(),
             headers: Arc::new(Mutex::new(headers)),
         }
@@ -65,6 +69,58 @@ impl WarpGen {
             }
         }
         h
+    }
+    
+    pub async fn generate_warpgen_net(&self) -> Result<String, Box<dyn std::error::Error>> {
+        let url = format!("{}/genconfig", self.warpgen_api);
+        let client = Client::builder()
+        .redirect(Policy::none()) 
+        .build()?;
+        let params = [("mode", "awg1.5")]; 
+        let current_headers = self.get_headers_for(&self.warpgen_api);
+        let response = client
+                .post(&url)
+                .headers(current_headers.clone())
+                .form(&params)
+                .send()
+                .await?;
+        let body = response.text().await?;
+        let document = Html::parse_document(&body);
+        let selector = Selector::parse("a[href^='/result/']").unwrap();
+        if let Some(link) = document.select(&selector).next() {
+            let href = link.value().attr("href").unwrap();
+            let id = href.trim_start_matches("/result/").to_string();
+            Ok(id)
+        }else {
+            Err("Result link not found in response".into())
+        }
+    }
+
+    pub async fn warpgen_string(&self,id: &str) -> Result<String, Box<dyn std::error::Error>> {
+        let url = format!("{}/sendconfig/{}?", self.warpgen_api,id);
+
+        let  current_headers = self.headers.lock().unwrap().clone();
+        let client = reqwest::Client::new();
+    
+        
+        let response = client
+            .get(url)
+            .headers(current_headers.clone())
+            .send()
+            .await?;
+        
+        let response_text: String = response.text().await?;
+        Ok(response_text)
+    }
+        
+    pub async fn save_warpgen_config(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let id = self.generate_warpgen_net().await?;
+        let config_str = self.warpgen_string(&id).await?;
+        
+        let timestamp = Local::now().format("%Y%m%d_%H%M%S");
+        let filename = format!("warp_warpgen_{}.conf", timestamp);
+        
+        self.save_config_to_file(&config_str, &filename).await
     }
     
     pub async fn get_key(&self) -> Result<String, Box<dyn std::error::Error>> {
