@@ -6,7 +6,7 @@ description = "Rust collection api for generate warp config"
 readme = "readme.md"
 homepage = "https://github.com/l0v3m0n3y/warpgen"
 repository = "https://github.com/l0v3m0n3y/warpgen"
-keywords = ["save_config_auto","save_valokda_config","save_workers_config","save_portal_config"]
+keywords = ["save_config_auto","save_valokda_config","save_workers_config","save_portal_config","save_warpgen_config"]
 categories = ["network-programming"]
 
 [dependencies]
@@ -21,3 +21,4 @@ url = "2.4"
 rand = "0.8"
 regex = "1"
 idna = "1.0"
+scraper = "0.26.0"
