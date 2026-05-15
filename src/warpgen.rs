@@ -52,7 +52,6 @@ impl WarpGen {
         Self {
             api_dev: "https://warp-generation.vercel.app".to_string(),
             api_valokda: "https://valokda-amnezia.vercel.app/api".to_string(),
-            warp_portal: "https://warp-vless.vercel.app/api".to_string(),
             warpgen_api: "https://warpgen.net".to_string(),
             api: "https://warp-generator.vercel.app/api".to_string(),
             headers: Arc::new(Mutex::new(headers)),
@@ -367,51 +366,8 @@ impl WarpGen {
         
         self.save_config_to_file(&config_str, &filename).await
     }
-    
-    pub async fn get_warp_portal(&self) -> Result<Value, Box<dyn std::error::Error>> {
-        let url = format!("{}/warp", self.warp_portal);
-        let client = reqwest::Client::new();
-        let body = json!({
-  "selectedServices": [],
-  "siteMode": "all",
-  "deviceType": "phone",
-  "selectedDns": "1.1.1.1",
-  "amneziaMode": "default"
-});
-        let current_headers = self.get_headers_for(&self.warp_portal);
-        let response = client
-                .post(&url)
-                .headers(current_headers.clone())
-                .json(&body)
-                .send()
-                .await?;
-        let body = response.json().await?;
 
-        Ok(body)
-    }
 
-    pub async fn decode_config_portal(&self) -> Result<String, Box<dyn std::error::Error>> {
-        let welcome_data = self.get_warp_portal().await?;
-        
-        let config_base64 = welcome_data.get("content")
-            .and_then(|content| content.get("configBase64"))
-            .and_then(|config| config.as_str())
-            .ok_or("configBase64 not found in response")?;
-        
-        let decoded_bytes = BASE64.decode(config_base64)?;
-        let decoded_string = String::from_utf8(decoded_bytes)?;
-        
-        Ok(decoded_string)
-    }
-
-    pub async fn save_portal_config(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        let config = self.decode_config_portal().await?;
-        
-        let timestamp = Local::now().format("%Y%m%d_%H%M%S");
-        let filename = format!("wireguard_portal_{}.conf", timestamp);
-        
-        self.save_config_to_file(&config, &filename).await
-    }
     pub async fn get_warp_valokda(&self) -> Result<Value, Box<dyn std::error::Error>> {
         let url = format!("{}/warp", self.api_valokda);
         let client = reqwest::Client::new();
