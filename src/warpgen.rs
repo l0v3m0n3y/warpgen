@@ -35,7 +35,6 @@ pub struct WarpConnectionInfo {
 pub struct WarpGen {
     api: String,
     api_valokda: String,
-    warp_portal: String,
     warpgen_api: String,
     api_dev: String,
     headers: Arc<Mutex<HeaderMap>>,
