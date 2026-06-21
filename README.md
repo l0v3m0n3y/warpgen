@@ -3,13 +3,12 @@ mini -rust collection api for generate warp config
 # main
 ```rust
 mod warpgen;
-use warpgen::WarpGen;
-
+use warpgen::{WarpGen};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let warp_client = WarpGen::new();
+    let warp_gen = WarpGen::new();
 
-    match warp_client.save_warpgen_config().await {
+    match warp_gen.save_warpgen_config().await {
         Ok(path) => {
             println!("✅ Success! Config saved to: {}", path.display());
         }
@@ -18,17 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-
-    match warp_client.save_warp_workers_config("de_DE").await {
-        Ok(path) => {
-            println!("✅ Success! Config saved to: {}", path.display());
-        }
-        Err(e) => {
-            eprintln!("❌ Error saving config: {}", e);
-        }
-    }
-
-    match warp_client.save_valokda_config().await {
+    match warp_gen.save_valokda_config().await {
         Ok(path) => {
             println!("✅ Success! Config saved to: {}", path.display());
         }
@@ -37,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     
-    match warp_client.save_config_auto().await {
+    match warp_gen.save_config_auto().await {
         Ok(path) => {
             println!("✅ Success! Config saved to: {}", path.display());
         }
@@ -46,6 +35,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    let path = warp_gen.save_valokda_awg2_config().await?;
+    println!("✅ Success! Config saved to: {}", path.display());
+    
     Ok(())
 }
 
